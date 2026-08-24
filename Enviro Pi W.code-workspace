@@ -1,0 +1,37 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "Mpy Remote Workspace",
+			"uri": "pico:"
+		}
+	],
+	"settings": {
+		"python.languageServer": "Pylance",
+		"pylint.enabled": false,
+		"flake8.enabled": false,
+		"micropico.pyIgnore": [
+			"**/.picowgo",
+			"**/.micropico",
+			"**/.vscode",
+			"**/.gitignore",
+			"**/.git",
+			"**/.DS_Store",
+			"**/project.pico-go",
+			"**/env",
+			"**/venv",
+			"**/.venv",
+			"**/.idea",
+			"test_button-gpio.py",
+			"test_button-i2c.py",
+			"rtc_test.py",
+			"main2.py",
+			"enviro_legacy/",
+			"rename_enviro.py",
+			"gavin.py",
+			"blink.py"
+		]
+	}
+}
