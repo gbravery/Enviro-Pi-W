@@ -50,6 +50,10 @@ def sync_pico_internal_rtc():
 # Run an initial cross-sync instantly when the module loads
 sync_pico_internal_rtc()
 
+# Path to sync marker file in temp/ directory
+SYNC_TIME_FILE = "temp/.last_sync_time"
+TEMP_DIR = "temp"
+
 def is_clock_set():
     """Validates if the hardware clock configuration is trusted and un-drifted."""
     try:
@@ -59,45 +63,28 @@ def is_clock_set():
     except:
         return False
 
-    # Check local sync history log file
+    # Check local sync history marker file modification timestamp (stat[8] == st_mtime)
     try:
-        os.stat("sync_time.txt")
-    except OSError:
-        return False # No sync history file exists
-
-    try:
-        # Simplistic lightweight replacement parsing loop for helpers structures
-        with open("sync_time.txt", "r") as f:
-            first_line = f.readline().strip()
-            if not first_line:
-                return False
-                
-        # Parse timestamp into a comparable tuple format
-        # Expects: YYYY-MM-DDTHH:MM:SSZ
-        year = int(first_line[0:4])
-        month = int(first_line[5:7])
-        day = int(first_line[8:10])
-        hour = int(first_line[11:13])
-        minute = int(first_line[14:16])
-        second = int(first_line[17:19]) if len(first_line) >= 19 else 0
-        
-        last_sync_secs = time.mktime((year, month, day, hour, minute, second, 0, 0))
+        stat = os.stat(SYNC_TIME_FILE)
+        last_sync_secs = stat[8]
         current_secs = time.time()
         
         seconds_since_sync = current_secs - last_sync_secs
-        max_allowed_delta = int(getattr(config, "resync_frequency", 24)) * 60 * 60
+        max_allowed_delta = int(getattr(config, "resync_frequency", 24)) * 3600
         
         if 0 <= seconds_since_sync < max_allowed_delta:
             return True
             
-        log("Enviro:Clock", f"RTC sync threshold expired (> {config.resync_frequency} hrs)")
+        log("Enviro:Clock", f"RTC sync threshold expired (> {getattr(config, 'resync_frequency', 24)} hrs)")
+    except OSError:
+        return False  # No sync history file exists or unreadable
     except Exception as e:
-        log("Enviro:Clock", f"Failed to parse synchronization tracker logs: {e}", status="⚠️")
+        log("Enviro:Clock", f"Failed to check sync marker timestamp: {e}", status="⚠️")
         
     return False
 
 def commit_ntp_timestamp(timestamp):
-    """Safely updates physical hardware and logs the transaction."""
+    """Safely updates physical hardware and updates the sync marker file timestamp."""
     try:
         # Reset control registers to ensure clock updates safely
         i2c.writeto_mem(0x51, 0x00, b'\x10')
@@ -108,9 +95,15 @@ def commit_ntp_timestamp(timestamp):
         # Cross-mirror to internal RP2040 registers immediately
         sync_pico_internal_rtc()
         
-        # Write out standard ISO-8601 formatting trace
-        with open("sync_time.txt", "w") as syncfile:
-            syncfile.write("{0:04d}-{1:02d}-{2:02d}T{3:02d}:{4:02d}:{5:02d}Z".format(*timestamp))
+        # Ensure temp directory exists
+        try:
+            os.mkdir(TEMP_DIR)
+        except OSError:
+            pass
+            
+        # Touch sync marker file so its filesystem mtime reflects the newly synchronized clock
+        with open(SYNC_TIME_FILE, "w") as f:
+            pass
         return True
     except Exception as e:
         log("Enviro:Clock", f"Failed to write fresh time mapping to hardware registers: {e}", status="❌")

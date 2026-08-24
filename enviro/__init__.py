@@ -3,14 +3,20 @@ import uasyncio as asyncio
 from logger import log
 import event_bus  
 from . import watchdog, sensors, storage, clock, sleep
+from .clock import i2c
 from enviro.constants import ACTIVITY_LED_PIN, WARN_LED_BLINK, WARN_LED_OFF, WARN_LED_ON
+import config
 
 _network_back_led = Pin("LED", Pin.OUT, value=0)
 _green_activity_led = Pin(ACTIVITY_LED_PIN, Pin.OUT, value=0)
 
+def activity_led(brightness=100):
+    """Sets the green activity LED state (compatible with board submodule helper calls)."""
+    _green_activity_led.value(1 if brightness > 0 else 0)
+
 class EnviroDevice:
     def __init__(self):
-        log("Enviro:Device", "Enviro Device Engine Initialised.", status="⚙️")
+        log("Enviro:Device", f"Enviro Device Engine Initialised (Model: {sensors.get_model()}).", status="⚙️")
         self._register_event_subscriptions()
         
     def _register_event_subscriptions(self):
@@ -42,7 +48,9 @@ class EnviroDevice:
     async def _on_run_diagnostics(self):
         from . import hardware_test
         import config
+        asyncio.create_task(hardware_test.verify_board_detection_logic())
         asyncio.create_task(hardware_test.verify_timezone_rules_logic())
+        asyncio.create_task(hardware_test.verify_clock_sync_marker_logic())
         asyncio.create_task(hardware_test.verify_led_concurrency(self))
         if getattr(config, "test_hardware_watchdog_hang", False):
             asyncio.create_task(hardware_test.execute_watchdog_freeze_test(self))

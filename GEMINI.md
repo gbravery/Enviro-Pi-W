@@ -50,3 +50,9 @@ Includes an active background USB Serial Input Scanner Task that samples sys.std
 ## 4. Active Target Status
 All baseline hardware indicators, timezone modules, cross-reboot PIO watchdogs, file management layers, dynamic power-routing systems, and concurrent event bus channels are locked down, optimized, and performing stably on the device.
 The structure is prepared to deploy the real asynchronous MQTT transmitter engine inside enviro_comms/mqtt.py or compile the physical hardware register scanning variables into enviro/sensors.py.
+
+## 5. Diagnostic & Test Chassis Standards
+- **Mandatory Test Updates**: Every architectural, hardware, comms, or file system change must be paired with corresponding automated diagnostic verification routines added to the appropriate test chassis:
+  - `enviro/hardware_test.py` for physical RTC, pinouts, GPIO, LEDs, watchdog, flash marker tracking, and timezone rules.
+  - `enviro_comms/network_test.py` for CYW43 Wi-Fi physical links, socket UDP NTP client handshakes, MQTT broker sessions, and data streaming uploaders.
+- **MicroPython Safe Execution**: Tests must handle missing files, backup real runtime states before running, restore original state upon test conclusion, and output formatted status tokens via `logger.log` (e.g. `status="✅"` or `status="❌"`).
